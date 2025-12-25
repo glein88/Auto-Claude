@@ -796,9 +796,9 @@ export function TaskCreationWizard({
                 onDrop={handleTextareaDrop}
                 rows={5}
                 disabled={isCreating}
+                spellCheck={true}
                 className={cn(
                   "resize-y min-h-[120px] max-h-[400px] relative bg-transparent",
-                  // Visual feedback when dragging over textarea
                   isDragOverTextarea && !isCreating && "border-primary bg-primary/5 ring-2 ring-primary/20"
                 )}
                 style={{ caretColor: 'auto' }}

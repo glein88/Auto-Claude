@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, nativeImage } from 'electron';
+import { app, BrowserWindow, shell, nativeImage, Menu, MenuItem } from 'electron';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
@@ -66,7 +66,8 @@ function createWindow(): void {
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false // Prevent terminal lag when window loses focus
+      backgroundThrottling: false,
+      spellcheck: true
     }
   });
 
@@ -92,6 +93,58 @@ function createWindow(): void {
   if (is.dev) {
     mainWindow.webContents.openDevTools({ mode: 'right' });
   }
+
+  // Context menu with spell check suggestions for editable fields
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    if (params.isEditable) {
+      const menu = new Menu();
+
+      // Add spelling suggestions if available
+      if (params.misspelledWord && params.dictionarySuggestions?.length > 0) {
+        params.dictionarySuggestions.slice(0, 5).forEach((suggestion: string) => {
+          menu.append(
+            new MenuItem({
+              label: suggestion,
+              click: () => {
+                mainWindow?.webContents.replaceMisspelling(suggestion);
+              }
+            })
+          );
+        });
+
+        menu.append(new MenuItem({ type: 'separator' }));
+
+        menu.append(
+          new MenuItem({
+            label: `Add "${params.misspelledWord}" to dictionary`,
+            click: () => {
+              if (mainWindow) {
+                mainWindow.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord);
+              }
+            }
+          })
+        );
+
+        menu.append(new MenuItem({ type: 'separator' }));
+      }
+
+      // Standard text editing options
+      if (params.editFlags.canCut) {
+        menu.append(new MenuItem({ label: 'Cut', role: 'cut' }));
+      }
+      if (params.editFlags.canCopy) {
+        menu.append(new MenuItem({ label: 'Copy', role: 'copy' }));
+      }
+      if (params.editFlags.canPaste) {
+        menu.append(new MenuItem({ label: 'Paste', role: 'paste' }));
+      }
+      if (params.editFlags.canSelectAll) {
+        menu.append(new MenuItem({ label: 'Select All', role: 'selectAll' }));
+      }
+
+      menu.popup();
+    }
+  });
 
   // Clean up on close
   mainWindow.on('closed', () => {
@@ -158,6 +211,20 @@ app.whenReady().then(() => {
 
   // Create window
   createWindow();
+
+  // Configure spell checking after window is created
+  if (mainWindow) {
+    const defaultLanguages = ['en-US'];
+    try {
+      const systemLanguage = app.getLocale();
+      if (systemLanguage && !defaultLanguages.includes(systemLanguage)) {
+        defaultLanguages.push(systemLanguage);
+      }
+      mainWindow.webContents.session.setSpellCheckerLanguages(defaultLanguages);
+    } catch (error) {
+      console.warn('[main] Failed to configure spell checker:', error);
+    }
+  }
 
   // Initialize usage monitoring after window is created
   if (mainWindow) {

@@ -487,6 +487,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
               onDrop={handleTextareaDrop}
               rows={5}
               disabled={isSaving}
+              spellCheck={true}
               className={cn(
                 isDragOverTextarea && !isSaving && "border-primary bg-primary/5 ring-2 ring-primary/20"
               )}
